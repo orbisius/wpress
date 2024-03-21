@@ -101,7 +101,7 @@ func (r Reader) Extract() (int, error) {
 
 		pathToFile := path.Clean("." + string(os.PathSeparator) + string(bytes.Trim(h.Prefix, "\x00")) + string(os.PathSeparator) + string(bytes.Trim(h.Name, "\x00")))
 
-		err = os.MkdirAll(path.Dir(pathToFile), 0777)
+		err = os.MkdirAll(path.Dir(pathToFile), 0755)
 		if err != nil {
 			fmt.Println(err)
 			return r.NumberOfFiles, err
@@ -208,4 +208,58 @@ func (r Reader) GetFilesCount() (int, error) {
 	}
 
 	return r.NumberOfFiles, nil
+}
+
+// Header and other necessary imports and structs should be defined above this.
+// Added by Slavi Marinov so no need to extract to view files.
+// List lists all files in the archive without extracting them.
+func (r *Reader) List() ([]string, error) {
+    var fileList []string
+
+    // Reset the file counter as we'll be re-iterating the archive.
+    r.NumberOfFiles = 0
+
+    // Ensure we start from the beginning of the file.
+    _, err := r.File.Seek(0, 0)
+    if err != nil {
+        return nil, err
+    }
+
+    for {
+        // Read the header block.
+        block, err := r.GetHeaderBlock()
+        if err != nil {
+            // If an error occurs (e.g., EOF), break the loop.
+            break
+        }
+
+        // Initialize a new header to hold the data.
+        h := &Header{}
+
+        // Check if the block is an EOF marker.
+        if bytes.Compare(block, h.GetEOFBlock()) == 0 {
+            break
+        }
+
+        // Populate the header with data from the block.
+        h.PopulateFromBytes(block)
+
+        // Create a cleaned up path to the file from the header information.
+        filePath := path.Clean("." + string(os.PathSeparator) + string(bytes.Trim(h.Prefix, "\x00")) + string(os.PathSeparator) + string(bytes.Trim(h.Name, "\x00")))
+
+        // Add the file path to the list of files.
+        fileList = append(fileList, filePath)
+
+        // Calculate the size of the content and skip over it to the next header.
+        size, _ := h.GetSize()
+        _, err = r.File.Seek(int64(size), 1)
+        if err != nil {
+            return fileList, err
+        }
+
+        // Increment the file counter.
+        r.NumberOfFiles++
+    }
+
+    return fileList, nil
 }
