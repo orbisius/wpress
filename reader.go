@@ -30,6 +30,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
+	"time"
 )
 
 // Reader structure
@@ -214,52 +216,65 @@ func (r Reader) GetFilesCount() (int, error) {
 // Added by Slavi Marinov so no need to extract to view files.
 // List lists all files in the archive without extracting them.
 func (r *Reader) List() ([]string, error) {
-    var fileList []string
+	var fileList []string
 
-    // Reset the file counter as we'll be re-iterating the archive.
-    r.NumberOfFiles = 0
+	// Reset the file counter as we'll be re-iterating the archive.
+	r.NumberOfFiles = 0
 
-    // Ensure we start from the beginning of the file.
-    _, err := r.File.Seek(0, 0)
-    if err != nil {
-        return nil, err
-    }
+	// Ensure we start from the beginning of the file.
+	_, err := r.File.Seek(0, 0)
+	if err != nil {
+		return nil, err
+	}
 
-    for {
-        // Read the header block.
-        block, err := r.GetHeaderBlock()
-        if err != nil {
-            // If an error occurs (e.g., EOF), break the loop.
-            break
-        }
+	for {
+		// Read the header block.
+		block, err := r.GetHeaderBlock()
+		if err != nil {
+			// If an error occurs (e.g., EOF), break the loop.
+			break
+		}
 
-        // Initialize a new header to hold the data.
-        h := &Header{}
+		// Initialize a new header to hold the data.
+		h := &Header{}
 
-        // Check if the block is an EOF marker.
-        if bytes.Compare(block, h.GetEOFBlock()) == 0 {
-            break
-        }
+		// Check if the block is an EOF marker.
+		if bytes.Compare(block, h.GetEOFBlock()) == 0 {
+			break
+		}
 
-        // Populate the header with data from the block.
-        h.PopulateFromBytes(block)
+		// Populate the header with data from the block.
+		h.PopulateFromBytes(block)
 
-        // Create a line SIZE Mtime path
-        filePath := string(bytes.Trim(h.Size, "\x00")) + " " + string(bytes.Trim(h.Mtime, "\x00")) + " " + path.Clean("." + string(os.PathSeparator) + string(bytes.Trim(h.Prefix, "\x00")) + string(os.PathSeparator) + string(bytes.Trim(h.Name, "\x00")))
+		// Step 1 & 2: Convert the string to an integer
+		timestampStr := string(bytes.Trim(h.Mtime, "\x00"))
+		unixTimestamp, errTs := strconv.ParseInt(timestampStr, 10, 64)
+		formattedTime := timestampStr // defaults to timestamp if conversion fails
 
-        // Add the file path to the list of files.
-        fileList = append(fileList, filePath)
+		if errTs == nil {
+			// Step 3: Convert integer to time.Time object
+			t := time.Unix(unixTimestamp, 0)
 
-        // Calculate the size of the content and skip over it to the next header.
-        size, _ := h.GetSize()
-        _, err = r.File.Seek(int64(size), 1)
-        if err != nil {
-            return fileList, err
-        }
+			// Step 4: Format the time.Time object to "YYYY-MM-DD HH:MM:SS"
+			formattedTime = t.Format("2006-01-02 15:04:05")
+		}
 
-        // Increment the file counter.
-        r.NumberOfFiles++
-    }
+		// Create a line SIZE Mtime path
+		filePath := string(bytes.Trim(h.Size, "\x00")) + " " + formattedTime + " " + path.Clean("."+string(os.PathSeparator)+string(bytes.Trim(h.Prefix, "\x00"))+string(os.PathSeparator)+string(bytes.Trim(h.Name, "\x00")))
 
-    return fileList, nil
+		// Add the file path to the list of files.
+		fileList = append(fileList, filePath)
+
+		// Calculate the size of the content and skip over it to the next header.
+		size, _ := h.GetSize()
+		_, err = r.File.Seek(int64(size), 1)
+		if err != nil {
+			return fileList, err
+		}
+
+		// Increment the file counter.
+		r.NumberOfFiles++
+	}
+
+	return fileList, nil
 }
