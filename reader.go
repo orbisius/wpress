@@ -249,18 +249,18 @@ func (r *Reader) List() ([]string, error) {
 		// Step 1 & 2: Convert the string to an integer
 		timestampStr := string(bytes.Trim(h.Mtime, "\x00"))
 		unixTimestamp, errTs := strconv.ParseInt(timestampStr, 10, 64)
-		formattedTime := timestampStr // defaults to timestamp if conversion fails
+		formattedDate := timestampStr // defaults to timestamp if conversion fails
 
 		if errTs == nil {
 			// Step 3: Convert integer to time.Time object
 			t := time.Unix(unixTimestamp, 0)
 
 			// Step 4: Format the time.Time object to "YYYY-MM-DD HH:MM:SS"
-			formattedTime = t.Format("2006-01-02 15:04:05")
+			formattedDate = t.Format("2006-01-02 15:04:05")
 		}
 
 		// Create a line SIZE Mtime path
-		filePath := string(bytes.Trim(h.Size, "\x00")) + " " + formattedTime + " " + path.Clean("."+string(os.PathSeparator)+string(bytes.Trim(h.Prefix, "\x00"))+string(os.PathSeparator)+string(bytes.Trim(h.Name, "\x00")))
+		filePath := string(bytes.Trim(h.Size, "\x00")) + " " + formattedDate + " " + path.Clean("."+string(os.PathSeparator)+string(bytes.Trim(h.Prefix, "\x00"))+string(os.PathSeparator)+string(bytes.Trim(h.Name, "\x00")))
 
 		// Add the file path to the list of files.
 		fileList = append(fileList, filePath)
