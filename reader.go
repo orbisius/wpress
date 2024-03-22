@@ -245,7 +245,7 @@ func (r *Reader) List() ([]string, error) {
         h.PopulateFromBytes(block)
 
         // Create a line SIZE Mtime path
-        filePath := string(bytes.Trim(h.Size, "\x00")) + " " string(bytes.Trim(h.Mtime, "\x00")) + " " + path.Clean("." + string(os.PathSeparator) + string(bytes.Trim(h.Prefix, "\x00")) + string(os.PathSeparator) + string(bytes.Trim(h.Name, "\x00")))
+        filePath := string(bytes.Trim(h.Size, "\x00")) + " " + string(bytes.Trim(h.Mtime, "\x00")) + " " + path.Clean("." + string(os.PathSeparator) + string(bytes.Trim(h.Prefix, "\x00")) + string(os.PathSeparator) + string(bytes.Trim(h.Name, "\x00")))
 
         // Add the file path to the list of files.
         fileList = append(fileList, filePath)
